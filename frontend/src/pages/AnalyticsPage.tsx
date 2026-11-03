@@ -76,6 +76,7 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
 
   const daysNum = useMemo(() => {
     const parsed = parseInt(range, 10);
@@ -85,11 +86,17 @@ export default function AnalyticsPage() {
   const loadData = async () => {
     setLoading(true);
     setError(false);
+    setForbidden(false);
     try {
       const summary = await getAnalyticsSummary(daysNum);
       setData(summary);
-    } catch {
-      setError(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/403|permission|forbidden/i.test(message)) {
+        setForbidden(true);
+      } else {
+        setError(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -229,6 +236,16 @@ export default function AnalyticsPage() {
         </div>
       </header>
 
+      {forbidden && (
+        <div
+          role="status"
+          className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"
+        >
+          <Info size={17} className="shrink-0 text-blue-600" />
+          <span>Analytics is available to managers and admins.</span>
+        </div>
+      )}
+
       {error && (
         <div
           role="alert"
@@ -263,7 +280,7 @@ export default function AnalyticsPage() {
         </>
       )}
 
-      {!loading && !error && isAllHidden && (
+      {!loading && !error && !forbidden && isAllHidden && (
         <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed border-[#D5DDEB] bg-white p-12 text-center">
           <div className="mb-3 rounded-full bg-slate-100 p-3">
             <FileWarning size={22} className="text-slate-500" />
@@ -275,7 +292,7 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {!loading && !error && !isAllHidden && (
+      {!loading && !error && !forbidden && !isAllHidden && (
         <>
           {activeKpis.length > 0 && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
